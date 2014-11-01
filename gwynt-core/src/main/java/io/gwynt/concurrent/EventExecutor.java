@@ -40,16 +40,4 @@ public interface EventExecutor extends ScheduledExecutorService {
 
     @Override
     ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit);
-
-    ProcessFuture submitProcess(Callable<ProcessStatus> task);
-
-    ProcessFuture submitProcess(Runnable task, ProcessStatus result);
-
-    ProcessFuture scheduleProcess(Runnable task, ProcessStatus result, long delay, TimeUnit unit);
-
-    ProcessFuture scheduleProcess(Callable<ProcessStatus> callable, long delay, TimeUnit unit);
-
-    ProcessFuture scheduleProcessAtFixedRate(Runnable command, ProcessStatus result, long initialDelay, long period, TimeUnit unit);
-
-    ProcessFuture scheduleProcessWithFixedDelay(Runnable command, ProcessStatus result, long initialDelay, long delay, TimeUnit unit);
 }

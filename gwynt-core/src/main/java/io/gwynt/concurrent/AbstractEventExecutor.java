@@ -127,39 +127,6 @@ public abstract class AbstractEventExecutor extends AbstractExecutorService impl
         return schedule(new ScheduledTask(this, PromiseTask.toCallable(command), ScheduledTask.triggerTime(unit.toNanos(delay)), delayedTaskQueue));
     }
 
-    @Override
-    public ProcessFuture submitProcess(Callable<ProcessStatus> task) {
-        return scheduleProcess(task, 0, TimeUnit.NANOSECONDS);
-    }
-
-    @Override
-    public ProcessFuture submitProcess(Runnable task, ProcessStatus result) {
-        return scheduleProcess(task, result, 0, TimeUnit.NANOSECONDS);
-    }
-
-    @Override
-    public ProcessFuture scheduleProcess(Runnable task, ProcessStatus result, long delay, TimeUnit unit) {
-        return (ProcessFuture) schedule(new ProcessTask(this, PromiseTask.toCallable(task, result), ProcessTask.triggerTime(unit.toNanos(delay)), delayedTaskQueue));
-    }
-
-    @Override
-    public ProcessFuture scheduleProcess(Callable<ProcessStatus> callable, long delay, TimeUnit unit) {
-        return (ProcessFuture) schedule(new ProcessTask(this, callable, ProcessTask.triggerTime(unit.toNanos(delay)), delayedTaskQueue));
-    }
-
-    @Override
-    public ProcessFuture scheduleProcessAtFixedRate(Runnable command, ProcessStatus result, long initialDelay, long period, TimeUnit unit) {
-        return (ProcessFuture) schedule(new ProcessTask(this, PromiseTask.toCallable(command, result), ScheduledTask.triggerTime(unit.toNanos(initialDelay)), unit.toNanos(period),
-                delayedTaskQueue));
-    }
-
-    @Override
-    public ProcessFuture scheduleProcessWithFixedDelay(Runnable command, ProcessStatus result, long initialDelay, long delay, TimeUnit unit) {
-        return (ProcessFuture) schedule(new ProcessTask(this, PromiseTask.toCallable(command, result), ProcessTask.triggerTime(unit.toNanos(initialDelay)), -unit.toNanos(delay),
-                delayedTaskQueue));
-    }
-
-
     private ScheduledFuture<?> schedule(ScheduledTask<?> task) {
         if (task == null) {
             throw new IllegalArgumentException("task");

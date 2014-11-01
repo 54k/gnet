@@ -91,36 +91,6 @@ public abstract class AbstractEventExecutorGroup implements EventExecutorGroup {
     }
 
     @Override
-    public ProcessFuture submitProcess(Runnable task, ProcessStatus result) {
-        return next().submitProcess(task, result);
-    }
-
-    @Override
-    public ProcessFuture submitProcess(Callable<ProcessStatus> task) {
-        return next().submitProcess(task);
-    }
-
-    @Override
-    public ProcessFuture scheduleProcess(Callable<ProcessStatus> callable, long delay, TimeUnit unit) {
-        return next().scheduleProcess(callable, delay, unit);
-    }
-
-    @Override
-    public ProcessFuture scheduleProcess(Runnable task, ProcessStatus result, long delay, TimeUnit unit) {
-        return next().scheduleProcess(task, result, delay, unit);
-    }
-
-    @Override
-    public ProcessFuture scheduleProcessWithFixedDelay(Runnable command, ProcessStatus result, long initialDelay, long delay, TimeUnit unit) {
-        return next().scheduleProcessWithFixedDelay(command, result, initialDelay, delay, unit);
-    }
-
-    @Override
-    public ProcessFuture scheduleProcessAtFixedRate(Runnable command, ProcessStatus result, long initialDelay, long period, TimeUnit unit) {
-        return next().scheduleProcessAtFixedRate(command, result, initialDelay, period, unit);
-    }
-
-    @Override
     @Deprecated
     public abstract void shutdown();
 
