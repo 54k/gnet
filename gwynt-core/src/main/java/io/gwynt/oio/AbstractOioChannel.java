@@ -34,23 +34,15 @@ public abstract class AbstractOioChannel extends AbstractChannel {
 
     protected abstract class AbstractOioUnsafe extends AbstractUnsafe {
 
-        private final Runnable readTask = new Runnable() {
-            @Override
-            public void run() {
-                setReadPending(false);
-                if (!config().isAutoRead()) {
-                    return;
-                }
-                read();
+        private final Runnable readTask = () -> {
+            setReadPending(false);
+            if (!config().isAutoRead()) {
+                return;
             }
+            read();
         };
 
-        private final Runnable writeTask = new Runnable() {
-            @Override
-            public void run() {
-                flush();
-            }
-        };
+        private final Runnable writeTask = this::flush;
 
         private final List<Object> messages = new ArrayList<>(1);
         private volatile boolean readPending;
