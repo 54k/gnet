@@ -355,11 +355,11 @@ public class NioDatagramChannel extends AbstractNioChannel implements MulticastC
                     if (javaChannel().isConnected()) {
                         if (address.equals(getRemoteAddress())) {
                             buffer.flip();
-                            message = Buffers.getBytes(buffer);
+                            message = Buffers.getRemainingBytes(buffer);
                         }
                     } else {
                         buffer.flip();
-                        message = new Datagram(Buffers.getBytes(buffer), getLocalAddress(), address);
+                        message = new Datagram(Buffers.getRemainingBytes(buffer), getLocalAddress(), address);
                     }
 
                     if (message != null) {

@@ -273,7 +273,7 @@ public class OioDatagramChannel extends AbstractOioChannel implements MulticastC
                 if (address != null) {
                     buffer.position(datagramPacket.getLength());
                     buffer.flip();
-                    messages.add(new Datagram(Buffers.getBytes(buffer), getLocalAddress(), address));
+                    messages.add(new Datagram(Buffers.getRemainingBytes(buffer), getLocalAddress(), address));
                     return 1;
                 }
             } catch (SocketTimeoutException ignore) {
