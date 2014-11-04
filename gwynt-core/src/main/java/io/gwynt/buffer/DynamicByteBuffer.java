@@ -39,7 +39,7 @@ public abstract class DynamicByteBuffer {
         checkReleased();
         if (buffer.remaining() < capacity) {
             int position = buffer.position();
-            int newCapacity = position + capacity - buffer.remaining();
+            int newCapacity = position + capacity;
 
             ByteBuffer alloc = pool.acquire(newCapacity, buffer.isDirect());
             buffer.position(0);
