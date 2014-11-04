@@ -2,52 +2,51 @@ package io.gwynt.buffer;
 
 import java.nio.ByteBuffer;
 
-public abstract class DynamicByteBuffer {
+public final class DynamicByteBuffer {
+
+    private static final HeapByteBufferAllocator HEAP_BYTE_BUFFER_ALLOCATOR = new HeapByteBufferAllocator();
+    private static final DirectByteBufferAllocator DIRECT_BYTE_BUFFER_ALLOCATOR = new DirectByteBufferAllocator();
 
     private ByteBuffer buffer;
-    private ByteBufferPool pool;
+    private ByteBufferAllocator allocator;
+    private int mark = -1;
 
-    protected DynamicByteBuffer(ByteBufferPool pool) {
-        if (pool == null) {
-            throw new IllegalArgumentException("pool");
+    private DynamicByteBuffer(ByteBufferAllocator allocator, int initialCapacity) {
+        if (allocator == null) {
+            throw new IllegalArgumentException("allocator");
         }
-        this.pool = pool;
-        buffer = newByteBuffer(pool);
-    }
-
-    public static DynamicByteBuffer allocate(ByteBufferPool pool, final int capacity) {
-        return new DynamicByteBuffer(pool) {
-            @Override
-            protected ByteBuffer newByteBuffer(ByteBufferPool pool) {
-                return pool.acquire(capacity, false);
-            }
-        };
-    }
-
-    public static DynamicByteBuffer allocateDirect(ByteBufferPool pool, final int capacity) {
-        return new DynamicByteBuffer(pool) {
-            @Override
-            protected ByteBuffer newByteBuffer(ByteBufferPool pool) {
-                return pool.acquire(capacity, true);
-            }
-        };
-    }
-
-    protected abstract ByteBuffer newByteBuffer(ByteBufferPool pool);
-
-    private void ensureCapacity(int capacity) {
-        checkReleased();
-        if (buffer.remaining() < capacity) {
-            int position = buffer.position();
-            int newCapacity = position + capacity;
-
-            ByteBuffer alloc = pool.acquire(newCapacity, buffer.isDirect());
-            buffer.position(0);
-            alloc.put(buffer);
-            pool.release(buffer);
-            alloc.position(position);
-            buffer = alloc;
+        if (initialCapacity < 0) {
+            throw new IllegalArgumentException("initialCapacity should not be negative");
         }
+        this.allocator = allocator;
+        buffer = allocator.allocate(initialCapacity);
+    }
+
+    private DynamicByteBuffer(ByteBufferAllocator allocator, ByteBuffer buffer) {
+        if (allocator == null) {
+            throw new IllegalArgumentException("allocator");
+        }
+        if (buffer == null) {
+            throw new IllegalArgumentException("buffer");
+        }
+        this.allocator = allocator;
+        this.buffer = buffer;
+    }
+
+    public static DynamicByteBuffer allocate(int capacity) {
+        return new DynamicByteBuffer(HEAP_BYTE_BUFFER_ALLOCATOR, capacity);
+    }
+
+    public static DynamicByteBuffer allocateDirect(int capacity) {
+        return new DynamicByteBuffer(DIRECT_BYTE_BUFFER_ALLOCATOR, capacity);
+    }
+
+    public static DynamicByteBuffer allocate(ByteBufferAllocator allocator, int capacity) {
+        return new DynamicByteBuffer(allocator, capacity);
+    }
+
+    public static DynamicByteBuffer wrap(byte[] bytes) {
+        return new DynamicByteBuffer(HEAP_BYTE_BUFFER_ALLOCATOR, ByteBuffer.wrap(bytes));
     }
 
     public byte get() {
@@ -251,12 +250,7 @@ public abstract class DynamicByteBuffer {
 
     public DynamicByteBuffer duplicate() {
         checkReleased();
-        return new DynamicByteBuffer(pool) {
-            @Override
-            protected ByteBuffer newByteBuffer(ByteBufferPool pool) {
-                return buffer.duplicate();
-            }
-        };
+        return new DynamicByteBuffer(allocator, buffer.duplicate());
     }
 
     public DynamicByteBuffer position(int newPosition) {
@@ -271,26 +265,145 @@ public abstract class DynamicByteBuffer {
         return this;
     }
 
-    public void release() {
-        pool.release(buffer);
-        buffer = null;
-        pool = null;
+    public byte[] array() {
+        checkReleased();
+        return buffer.array();
     }
 
-    public ByteBuffer asByteBuffer() {
+    public boolean hasRemaining() {
+        return buffer.hasRemaining();
+    }
+
+    public boolean isDirect() {
         checkReleased();
-        return buffer;
+        return buffer.isDirect();
+    }
+
+    public int limit() {
+        checkReleased();
+        return buffer.limit();
+    }
+
+    public DynamicByteBuffer limit(int newLimit) {
+        checkReleased();
+        buffer.limit(newLimit);
+        return this;
+    }
+
+    public int capacity() {
+        checkReleased();
+        return buffer.capacity();
+    }
+
+    public DynamicByteBuffer mark() {
+        checkReleased();
+        buffer.mark();
+        mark = buffer.position();
+        return this;
+    }
+
+    public DynamicByteBuffer reset() {
+        checkReleased();
+        buffer.reset();
+        return this;
     }
 
     public DynamicByteBuffer clear() {
         checkReleased();
         buffer.clear();
+        mark = -1;
         return this;
+    }
+
+    public void release() {
+        allocator.release(buffer);
+        buffer = null;
+        allocator = null;
+    }
+
+    public ByteBuffer unwrap() {
+        checkReleased();
+        return buffer;
     }
 
     private void checkReleased() {
         if (buffer == null) {
             throw new IllegalStateException("Buffer was released.");
         }
+    }
+
+    private void ensureCapacity(int capacity) {
+        checkReleased();
+        if (buffer.remaining() < capacity) {
+            expandBufferBy(capacity);
+        }
+    }
+
+    private void expandBufferBy(int capacity) {
+        int oldPosition = buffer.position();
+        int newCapacity = oldPosition + capacity;
+        ByteBuffer newBuffer = allocator.allocate(newCapacity);
+
+        buffer.position(0);
+        newBuffer.put(buffer);
+        allocator.release(buffer);
+
+        if (mark > -1) {
+            newBuffer.position(mark);
+            newBuffer.mark();
+        }
+
+        newBuffer.position(oldPosition);
+        buffer = newBuffer;
+    }
+
+    private static final class HeapByteBufferAllocator implements ByteBufferAllocator {
+
+        @Override
+        public ByteBuffer allocate(int capacity) {
+            return ByteBuffer.allocate(capacity);
+        }
+
+        @Override
+        public void release(ByteBuffer buffer) {
+            buffer.clear();
+        }
+    }
+
+    private static final class DirectByteBufferAllocator implements ByteBufferAllocator {
+
+        @Override
+        public ByteBuffer allocate(int capacity) {
+            return ByteBuffer.allocateDirect(capacity);
+        }
+
+        @Override
+        public void release(ByteBuffer buffer) {
+            buffer.clear();
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        DynamicByteBuffer that = (DynamicByteBuffer) o;
+
+        return !(buffer != null ? !buffer.equals(that.buffer) : that.buffer != null);
+    }
+
+    @Override
+    public int hashCode() {
+        return buffer != null ? buffer.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getCanonicalName() + "[buffer=" + buffer + ']';
     }
 }

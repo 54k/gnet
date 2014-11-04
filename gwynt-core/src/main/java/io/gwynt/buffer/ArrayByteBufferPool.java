@@ -60,7 +60,7 @@ public class ArrayByteBufferPool implements ByteBufferPool {
 
     @Override
     public DynamicByteBuffer acquireDynamic(int size, boolean direct) {
-        return direct ? DynamicByteBuffer.allocateDirect(this, size) : DynamicByteBuffer.allocate(this, size);
+        return DynamicByteBuffer.allocate(new AllocatorWrapper(this, direct), size);
     }
 
     @Override
@@ -105,6 +105,27 @@ public class ArrayByteBufferPool implements ByteBufferPool {
 
         public Bucket(int size) {
             this.size = size;
+        }
+    }
+
+    private static final class AllocatorWrapper implements ByteBufferAllocator {
+
+        private ByteBufferPool pool;
+        private boolean direct;
+
+        private AllocatorWrapper(ByteBufferPool pool, boolean direct) {
+            this.pool = pool;
+            this.direct = direct;
+        }
+
+        @Override
+        public ByteBuffer allocate(int capacity) {
+            return pool.acquire(capacity, direct);
+        }
+
+        @Override
+        public void release(ByteBuffer buffer) {
+            pool.release(buffer);
         }
     }
 }
