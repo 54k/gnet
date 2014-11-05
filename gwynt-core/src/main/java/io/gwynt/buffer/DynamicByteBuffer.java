@@ -332,7 +332,7 @@ public final class DynamicByteBuffer {
         }
     }
 
-    private void ensureCapacity(int capacity) {
+    public void ensureCapacity(int capacity) {
         checkReleased();
         if (buffer.remaining() < capacity) {
             expandBufferBy(capacity);
