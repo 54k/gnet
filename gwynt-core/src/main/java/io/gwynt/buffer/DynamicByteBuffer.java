@@ -316,9 +316,14 @@ public final class DynamicByteBuffer {
     }
 
     public void release() {
+        checkReleased();
         allocator.release(buffer);
         buffer = null;
         allocator = null;
+    }
+
+    public boolean isReleased() {
+        return buffer == null;
     }
 
     public ByteBuffer unwrap() {
@@ -327,7 +332,7 @@ public final class DynamicByteBuffer {
     }
 
     private void checkReleased() {
-        if (buffer == null) {
+        if (isReleased()) {
             throw new IllegalStateException("Buffer was released.");
         }
     }
