@@ -21,12 +21,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.registeredEvent;
             if (event == null) {
-                dctx.registeredEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnRegisteredNow(context);
-                    }
-                };
+                dctx.registeredEvent = event = () -> invokeOnRegisteredNow(context);
             }
             executor.execute(event);
         }
@@ -40,12 +35,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.unregisteredEvent;
             if (event == null) {
-                dctx.unregisteredEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnUnregisteredNow(context);
-                    }
-                };
+                dctx.unregisteredEvent = event = () -> invokeOnUnregisteredNow(context);
             }
             executor.execute(event);
         }
@@ -59,12 +49,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.openEvent;
             if (event == null) {
-                dctx.openEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnOpenNow(context);
-                    }
-                };
+                dctx.openEvent = event = () -> invokeOnOpenNow(context);
             }
             executor.execute(event);
         }
@@ -78,12 +63,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.readEvent;
             if (event == null) {
-                dctx.readEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnReadNow(context, channelPromise);
-                    }
-                };
+                dctx.readEvent = event = () -> invokeOnReadNow(context, channelPromise);
             }
             executor.execute(event);
         }
@@ -95,12 +75,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
         if (executor.inExecutorThread()) {
             invokeOnMessageReceivedNow(context, message);
         } else {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    invokeOnMessageReceivedNow(context, message);
-                }
-            });
+            executor.execute(() -> invokeOnMessageReceivedNow(context, message));
         }
     }
 
@@ -110,12 +85,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
         if (executor.inExecutorThread()) {
             invokeOnMessageSentNow(context, message, channelPromise);
         } else {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    invokeOnMessageSentNow(context, message, channelPromise);
-                }
-            });
+            executor.execute(() -> invokeOnMessageSentNow(context, message, channelPromise));
         }
     }
 
@@ -124,12 +94,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
         if (executor.inExecutorThread()) {
             invokeOnClosingNow(context, channelPromise);
         } else {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    invokeOnClosingNow(context, channelPromise);
-                }
-            });
+            executor.execute(() -> invokeOnClosingNow(context, channelPromise));
         }
     }
 
@@ -141,12 +106,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.closeEvent;
             if (event == null) {
-                dctx.closeEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnCloseNow(context);
-                    }
-                };
+                dctx.closeEvent = event = () -> invokeOnCloseNow(context);
             }
             executor.execute(event);
         }
@@ -160,12 +120,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
             AbstractHandlerContext dctx = (AbstractHandlerContext) context;
             Runnable event = dctx.disconnectEvent;
             if (event == null) {
-                dctx.disconnectEvent = event = new Runnable() {
-                    @Override
-                    public void run() {
-                        invokeOnDisconnectNow(context, channelPromise);
-                    }
-                };
+                dctx.disconnectEvent = event = () -> invokeOnDisconnectNow(context, channelPromise);
             }
             executor.execute(event);
         }
@@ -176,12 +131,7 @@ public class DefaultHandlerContextInvoker implements HandlerContextInvoker {
         if (executor.inExecutorThread()) {
             invokeOnExceptionCaughtNow(context, e);
         } else {
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    invokeOnExceptionCaughtNow(context, e);
-                }
-            });
+            executor.execute(() -> invokeOnExceptionCaughtNow(context, e));
         }
     }
 }
