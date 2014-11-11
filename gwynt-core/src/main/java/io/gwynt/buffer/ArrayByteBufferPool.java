@@ -6,126 +6,127 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ArrayByteBufferPool implements ByteBufferPool {
 
-    private final static int DEFAULT_MIN_SIZE = 64;
-    private final static int DEFAULT_STEP_SIZE = 1024;
-    private final static int DEFAULT_MAX_SIZE = 65536;
+	private final static int DEFAULT_MIN_SIZE = 64;
+	private final static int DEFAULT_STEP_SIZE = 1024;
+	private final static int DEFAULT_MAX_SIZE = 65536;
 
-    public final static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
+	public final static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
 
-    private final int minSize;
-    private final Bucket[] direct;
-    private final Bucket[] indirect;
-    private final int increment;
+	private final int minSize;
+	private final Bucket[] directBuckets;
+	private final Bucket[] heapBuckets;
+	private final int increment;
+	private int bucketsCount;
 
-    public ArrayByteBufferPool() {
-        this(DEFAULT_MIN_SIZE, DEFAULT_STEP_SIZE, DEFAULT_MAX_SIZE);
-    }
+	public ArrayByteBufferPool() {
+		this(DEFAULT_MIN_SIZE, DEFAULT_STEP_SIZE, DEFAULT_MAX_SIZE);
+	}
 
-    public ArrayByteBufferPool(int minSize, int increment, int maxSize) {
-        if (minSize >= increment) {
-            throw new IllegalArgumentException("minSize >= increment");
-        }
-        if ((maxSize % increment) != 0 || increment >= maxSize) {
-            throw new IllegalArgumentException("increment must be a divisor of maxSize");
-        }
+	public ArrayByteBufferPool(int minSize, int increment, int maxSize) {
+		if (minSize > increment) {
+			throw new IllegalArgumentException("minSize > increment");
+		}
+		if ((maxSize % increment) != 0 || increment >= maxSize) {
+			throw new IllegalArgumentException("increment must be a divisor of maxSize");
+		}
 
-        this.minSize = minSize;
-        this.increment = increment;
+		this.minSize = minSize;
+		this.increment = increment;
 
-        int bucketLength = maxSize / increment;
+		bucketsCount = maxSize / increment;
 
-        direct = new Bucket[bucketLength];
-        indirect = new Bucket[bucketLength];
+		directBuckets = new Bucket[bucketsCount];
+		heapBuckets = new Bucket[bucketsCount];
 
-        int size = 0;
-        for (int i = 0; i < direct.length; i++) {
-            size += this.increment;
-            direct[i] = new Bucket(size);
-            indirect[i] = new Bucket(size);
-        }
-    }
+		int size = minSize;
+		for (int i = 0; i < bucketsCount; i++) {
+			directBuckets[i] = new Bucket(size);
+			heapBuckets[i] = new Bucket(size);
+			size += this.increment;
+		}
+	}
 
-    @Override
-    public ByteBuffer acquire(int size, boolean direct) {
-        Bucket bucket = bucketFor(size, direct);
-        ByteBuffer buffer = bucket == null ? null : bucket.queue.poll();
+	@Override
+	public ByteBuffer acquire(int size, boolean direct) {
+		Bucket bucket = bucketFor(size, direct);
+		ByteBuffer buffer = bucket == null ? null : bucket.queue.poll();
 
-        if (buffer == null) {
-            int capacity = bucket == null ? size : bucket.size;
-            buffer = direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
-        }
+		if (buffer == null) {
+			int capacity = bucket == null ? size : bucket.size;
+			buffer = direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
+		}
 
-        return buffer;
-    }
+		return buffer;
+	}
 
-    @Override
-    public DynamicByteBuffer acquireDynamic(int size, boolean direct) {
-        return DynamicByteBuffer.allocate(new AllocatorWrapper(this, direct), size);
-    }
+	@Override
+	public DynamicByteBuffer acquireDynamic(int size, boolean direct) {
+		return DynamicByteBuffer.allocate(new AllocatorWrapper(this, direct), size);
+	}
 
-    @Override
-    public void release(ByteBuffer buffer) {
-        if (buffer != null) {
-            Bucket bucket = bucketFor(buffer.capacity(), buffer.isDirect());
-            if (bucket != null) {
-                buffer.clear();
-                bucket.queue.offer(buffer);
-            }
-        }
-    }
+	@Override
+	public void release(ByteBuffer buffer) {
+		if (buffer != null) {
+			Bucket bucket = bucketFor(buffer.capacity(), buffer.isDirect());
+			if (bucket != null) {
+				buffer.clear();
+				bucket.queue.offer(buffer);
+			}
+		}
+	}
 
-    @Override
-    public void release(DynamicByteBuffer buffer) {
-        buffer.release();
-    }
+	@Override
+	public void release(DynamicByteBuffer buffer) {
+		buffer.release();
+	}
 
-    @Override
-    public void clear() {
-        for (int i = 0; i < direct.length; i++) {
-            direct[i].queue.clear();
-            indirect[i].queue.clear();
-        }
-    }
+	@Override
+	public void clear() {
+		for (int i = 0; i < bucketsCount; i++) {
+			directBuckets[i].queue.clear();
+			heapBuckets[i].queue.clear();
+		}
+	}
 
-    private Bucket bucketFor(int size, boolean direct) {
-        if (size <= minSize) {
-            return null;
-        }
-        int b = (size - 1) / increment;
-        if (b >= this.direct.length) {
-            return null;
-        }
+	private Bucket bucketFor(int size, boolean direct) {
+		if (size < minSize) {
+			return null;
+		}
+		int b = (size - 1) / increment;
+		if (b >= this.directBuckets.length) {
+			return null;
+		}
 
-        return direct ? this.direct[b] : indirect[b];
-    }
+		return direct ? this.directBuckets[b] : heapBuckets[b];
+	}
 
-    private static final class Bucket {
-        public final int size;
-        public final Queue<ByteBuffer> queue = new ConcurrentLinkedQueue<>();
+	private static final class Bucket {
+		public final int size;
+		public final Queue<ByteBuffer> queue = new ConcurrentLinkedQueue<>();
 
-        public Bucket(int size) {
-            this.size = size;
-        }
-    }
+		public Bucket(int size) {
+			this.size = size;
+		}
+	}
 
-    private static final class AllocatorWrapper implements ByteBufferAllocator {
+	private static final class AllocatorWrapper implements ByteBufferAllocator {
 
-        private ByteBufferPool pool;
-        private boolean direct;
+		private ByteBufferPool pool;
+		private boolean direct;
 
-        private AllocatorWrapper(ByteBufferPool pool, boolean direct) {
-            this.pool = pool;
-            this.direct = direct;
-        }
+		private AllocatorWrapper(ByteBufferPool pool, boolean direct) {
+			this.pool = pool;
+			this.direct = direct;
+		}
 
-        @Override
-        public ByteBuffer allocate(int capacity) {
-            return pool.acquire(capacity, direct);
-        }
+		@Override
+		public ByteBuffer allocate(int capacity) {
+			return pool.acquire(capacity, direct);
+		}
 
-        @Override
-        public void release(ByteBuffer buffer) {
-            pool.release(buffer);
-        }
-    }
+		@Override
+		public void release(ByteBuffer buffer) {
+			pool.release(buffer);
+		}
+	}
 }
