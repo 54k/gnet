@@ -10,7 +10,7 @@ public class ArrayByteBufferPool implements ByteBufferPool {
     private final static int DEFAULT_STEP_SIZE = 1024;
     private final static int DEFAULT_MAX_SIZE = 65536;
 
-    public static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
+    public final static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
 
     private final int minSize;
     private final Bucket[] direct;
