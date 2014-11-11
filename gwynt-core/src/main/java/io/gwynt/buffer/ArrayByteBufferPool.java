@@ -6,11 +6,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ArrayByteBufferPool implements ByteBufferPool {
 
+	public final static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
+
 	private final static int DEFAULT_MIN_SIZE = 64;
 	private final static int DEFAULT_STEP_SIZE = 1024;
 	private final static int DEFAULT_MAX_SIZE = 65536;
-
-	public final static ByteBufferPool DEFAULT = new ArrayByteBufferPool();
 
 	private final int minSize;
 	private final Bucket[] directBuckets;
