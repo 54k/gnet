@@ -23,8 +23,8 @@ public class ArrayByteBufferPool implements ByteBufferPool {
 	}
 
 	public ArrayByteBufferPool(int minSize, int increment, int maxSize) {
-		if (minSize > increment) {
-			throw new IllegalArgumentException("minSize > increment");
+		if (minSize >= increment) {
+			throw new IllegalArgumentException("minSize >= increment");
 		}
 		if ((maxSize % increment) != 0 || increment >= maxSize) {
 			throw new IllegalArgumentException("increment must be a divisor of maxSize");
@@ -38,11 +38,11 @@ public class ArrayByteBufferPool implements ByteBufferPool {
 		directBuckets = new Bucket[bucketsCount];
 		heapBuckets = new Bucket[bucketsCount];
 
-		int size = minSize;
+		int size = 0;
 		for (int i = 0; i < bucketsCount; i++) {
+			size += this.increment;
 			directBuckets[i] = new Bucket(size);
 			heapBuckets[i] = new Bucket(size);
-			size += this.increment;
 		}
 	}
 
@@ -89,7 +89,7 @@ public class ArrayByteBufferPool implements ByteBufferPool {
 	}
 
 	private Bucket bucketFor(int size, boolean direct) {
-		if (size < minSize) {
+		if (size <= minSize) {
 			return null;
 		}
 		int b = (size - 1) / increment;
