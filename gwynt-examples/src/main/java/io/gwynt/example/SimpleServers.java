@@ -32,7 +32,7 @@ public class SimpleServers implements Runnable {
         try {
             Future oioCloseFuture = oioBootstrap.bind(3000).sync().channel().closeFuture();
             Future nioCloseFuture = nioBootstrap.bind(3001).sync().channel().closeFuture();
-            FutureGroup<Channel> futures = new DefaultFutureGroup<Channel>(Arrays.asList(oioCloseFuture, nioCloseFuture));
+            FutureGroup<?> futures = new DefaultFutureGroup<Channel>(Arrays.asList(oioCloseFuture, nioCloseFuture));
             futures.sync();
         } catch (InterruptedException ignore) {
         }
